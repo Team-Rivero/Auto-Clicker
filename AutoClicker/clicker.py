@@ -21,7 +21,6 @@ def on_single_key(e):
     window.unbind("<KeyPress>")
     start_stop_key = keyboard.KeyCode(char=chr(e.keycode).lower())
     trigger_button.config(text=str(e.keycode) + " | " + chr(e.keycode).lower())
-    #print(start_stop_key)
 
 #Input Trigger Button
 trigger_button = Button(window, text=start_stop_key.char)
@@ -38,19 +37,18 @@ button_to_click = Text(window, height = 1, width = 3)
 button_to_click.insert("1.0", "e")
 button_to_click.pack()
 
-# threading.Thread is used
-# to control clicks
+#Duration/Count
+
+#Multiple Keys
+
+#Toggle/Hold
+
+#Thread to control clicks
 class ClickMouse(threading.Thread):
     def __init__(self):
         super(ClickMouse, self).__init__()
         self.running = False
         self.program_running = True
-  
-    def start_clicking(self):
-        self.running = True
-  
-    def stop_clicking(self):
-        self.running = False
 
     # method to check and run loop until
     # it is true another loop will check
@@ -59,11 +57,10 @@ class ClickMouse(threading.Thread):
     # and click rate.
     def run(self):
         while self.program_running:
-            print("Running?")
             while self.running:
-                #mouse.click(self.button)
+                #mouse.click(self.button.left)
                 controller.press(self.button_to_click)
-                time.sleep(self.click_rate)
+                time.sleep(1/self.click_rate)
             time.sleep(0.1)
 
 # instance of mouse controller is created
@@ -78,12 +75,12 @@ controller = keyboard.Controller()
 def on_press(key):
     if key == start_stop_key:
         if click_thread.running:
-            click_thread.stop_clicking()
+            click_thread.running = False
         else:
             #apply settings before starting
             click_thread.button_to_click = (button_to_click.get("1.0", END).strip())
             click_thread.click_rate = float(click_rate.get("1.0", END).strip())
-            click_thread.start_clicking()
+            click_thread.running = True
 
 # Create a listener instance
 listener = keyboard.Listener(on_press=on_press)
