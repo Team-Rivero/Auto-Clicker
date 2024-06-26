@@ -9,52 +9,106 @@ from pynput import mouse, keyboard
 #Default Trigger Input Key
 start_stop_key = keyboard.KeyCode(char='a')
 
+#Center Window on screen
+def center_window(window):
+    # Get screen width and height
+    screen_width = window.winfo_screenwidth()
+    screen_height = window.winfo_screenheight()
+
+    # Calculate position coordinates
+    x = (screen_width // 2) - (window.winfo_reqwidth() // 2)
+    y = (screen_height // 2) - (window.winfo_reqheight() // 2)
+
+    # Set the position of the window
+    window.geometry(f'+{x}+{y}')
+
 #Create Window
 window = Tk()
-frame = Frame(window)
+window.title("Clicker")
+center_window(window)
+frame = Frame(window, width = 250)
 frame.pack()
 
-#Define Start/Stop Key  DOESN'T WORK FOR MOUSE BUTTONS
+#Create Input Trigger Input
+label = Label(window, text="Trigger: ")
+label.pack(side=LEFT, padx=(5, 0), pady=0)
+label.pack()
+
+input_trigger = Button(window, text=str(ord(start_stop_key.char)) + " | " + start_stop_key.char)
+input_trigger.pack(side=LEFT, padx=(0, 15), pady=0)
+input_trigger.config(command=lambda: (window.bind("<KeyPress>" , on_single_key), input_trigger.config(text=" ")))
+input_trigger.pack()
+
+#Create Click-Rate Input
+label = Label(window, text="Clicks/s: ")
+label.pack(side=LEFT, padx=0, pady=0)
+label.pack()
+
+click_rate = Text(window, height = 1, width = 3)
+click_rate.pack(side=LEFT, padx=(0, 15), pady=0)
+click_rate.insert("1.0", "1")
+click_rate.pack()
+
+#Button To Click Input
+label = Label(window, text="Key to Click: ")
+label.pack(side=LEFT, padx=0, pady=0)
+label.pack()
+
+button_to_click = Text(window, height = 1, width = 3)
+button_to_click.pack(side=LEFT, padx=(0, 15), pady=0)
+button_to_click.insert("1.0", "e")
+button_to_click.pack()
+
+#Define Trigger Button DOESN'T WORK FOR MOUSE BUTTONS YET
 def on_single_key(e):
     global start_stop_key
 
     window.unbind("<KeyPress>")
     start_stop_key = keyboard.KeyCode(char=chr(e.keycode).lower())
-    trigger_button.config(text=str(e.keycode) + " | " + chr(e.keycode).lower())
+    input_trigger.config(text=str(ord(start_stop_key.char)) + " | " + start_stop_key.char)
 
-#Input Trigger Button
-trigger_button = Button(window, text=start_stop_key.char)
-trigger_button.config(command=lambda: (window.bind("<KeyPress>" , on_single_key), trigger_button.config(text=" ")))
-trigger_button.pack()
+#Create Duration Time
+label = Label(window, text="Duration in Seconds: ")
+label.pack(side=LEFT, padx=0, pady=0)
+label.pack()
 
-#Clicks per second input
-click_rate = Text(window, height = 1, width = 3)
-click_rate.insert("1.0", "1")
-click_rate.pack()
+duration_time = Text(window, height = 1, width = 3)
+duration_time.pack(side=LEFT, padx=(0, 15), pady=0)
+duration_time.insert("1.0", "0")
+duration_time.pack()
 
-#Button To Press
-button_to_click = Text(window, height = 1, width = 3)
-button_to_click.insert("1.0", "e")
-button_to_click.pack()
+#Create Duration Clicks
+label = Label(window, text="Duraction in Clicks: ")
+label.pack(side=LEFT, padx=0, pady=0)
+label.pack()
 
-#Duration/Count
+duration_clicks = Text(window, height = 1, width = 3)
+duration_clicks.pack(side=LEFT, padx=(0, 15), pady=0)
+duration_clicks.insert("1.0", "0")
+duration_clicks.pack()
 
-#Multiple Keys
+#Create Toggle/Hold Checkbox
+label = Label(window, text="Toggle/Hold: ")
+label.pack(side=LEFT, padx=0, pady=0)
+label.pack()
 
-#Toggle/Hold
+toggle_checkbox = BooleanVar(value=True)
+toggle_box = Checkbutton(window, variable=toggle_checkbox)
+toggle_box.pack(side=LEFT, padx=0, pady=0)
+toggle_box.pack()
 
 #Thread to control clicks
-class ClickMouse(threading.Thread):
+class ClickButton(threading.Thread):
     def __init__(self):
-        super(ClickMouse, self).__init__()
+        super(ClickButton, self).__init__()
         self.running = False
         self.program_running = True
+    
+    def duration(self):
+        time.sleep(float(duration_time.get("1.0", END).strip()))
+        click_thread.running = False
 
-    # method to check and run loop until
-    # it is true another loop will check
-    # if it is set to true or not,
-    # for mouse click it set to button
-    # and click rate.
+    #Loops every .1 second to check whether to run. Better option?
     def run(self):
         while self.program_running:
             while self.running:
@@ -63,13 +117,17 @@ class ClickMouse(threading.Thread):
                 time.sleep(1/self.click_rate)
             time.sleep(0.1)
 
-# instance of mouse controller is created
-mouse = mouse.Controller()
-click_thread = ClickMouse()
-click_thread.start()
+    #Stop when window closed
+    def stop(self):
+        self.program_running = False
 
-#Instance of keyboard controller created
+# instance of mouse and keyboard controller created
+mouse = mouse.Controller()
 controller = keyboard.Controller()
+
+#Create Thread
+click_thread = ClickButton()
+click_thread.start()
 
 #Checks if pressed key is input trigger key to start/stop
 def on_press(key):
@@ -81,6 +139,9 @@ def on_press(key):
             click_thread.button_to_click = (button_to_click.get("1.0", END).strip())
             click_thread.click_rate = float(click_rate.get("1.0", END).strip())
             click_thread.running = True
+            #Duration if greater than 0
+            if float(duration_time.get("1.0", END).strip()) > 0:
+                click_thread.duration()
 
 # Create a listener instance
 listener = keyboard.Listener(on_press=on_press)
@@ -88,5 +149,11 @@ listener = keyboard.Listener(on_press=on_press)
 # Start the listener in a separate thread
 listener_thread = threading.Thread(target=listener.start)
 listener_thread.start()
+
+#Stop separate thread on window close
+def on_close():
+    click_thread.stop()
+    window.destroy()
+window.protocol("WM_DELETE_WINDOW", on_close)
 
 window.mainloop()
