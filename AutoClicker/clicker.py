@@ -22,34 +22,6 @@ def center_window(window):
     # Set the position of the window
     window.geometry(f'+{x}+{y}')
 
-#Create Window
-window = Tk()
-window.title("Clicker")
-window.wm_attributes("-topmost", 1)
-center_window(window)
-frame = Frame(window, width = 250)
-frame.pack()
-
-#Create Input Trigger Input
-label = Label(window, text="Trigger: ")
-label.pack(side=LEFT, padx=(5, 0), pady=0)
-label.pack()
-
-input_trigger = Button(window, text=str(ord(start_stop_key.char)) + " | " + start_stop_key.char)
-input_trigger.pack(side=LEFT, padx=(0, 15), pady=0)
-input_trigger.config(command=lambda: (window.bind("<KeyPress>" , on_single_key), input_trigger.config(text=" ")))
-input_trigger.pack()
-
-#Button To Click Input
-label = Label(window, text="Key to Click: ")
-label.pack(side=LEFT, padx=0, pady=0)
-label.pack()
-
-button_to_click = Text(window, height = 1, width = 3)
-button_to_click.pack(side=LEFT, padx=(0, 15), pady=0)
-button_to_click.insert("1.0", "e")
-button_to_click.pack()
-
 #Define Trigger Button DOESN'T WORK FOR MOUSE BUTTONS YET
 def on_single_key(e):
     global start_stop_key
@@ -58,45 +30,62 @@ def on_single_key(e):
     start_stop_key = keyboard.KeyCode(char=chr(e.keycode).lower())
     input_trigger.config(text=str(ord(start_stop_key.char)) + " | " + start_stop_key.char)
 
-#Create Click-Rate Input
-label = Label(window, text="Clicks/s: ")
-label.pack(side=LEFT, padx=0, pady=0)
-label.pack()
+#Create Window
+window = Tk()
+window.title("Clicker")
+window.wm_attributes("-topmost", 1)
+center_window(window)
 
-click_rate = Text(window, height = 1, width = 3)
+frame = Frame(window, width=250)
+frame.pack()
+
+#Create Input Trigger Input
+label_trigger = Label(frame, text="Trigger: ")
+label_trigger.pack(side=LEFT, padx=0, pady=0)
+
+input_trigger = Button(frame, text=str(ord(start_stop_key.char)) + " | " + start_stop_key.char)
+input_trigger.pack(side=LEFT, padx=(0, 15), pady=0)
+input_trigger.config(command=lambda: (window.bind("<KeyPress>", on_single_key), input_trigger.config(text=" ")))
+
+#Button To Click Input
+label_click = Label(frame, text="Key to Click: ")
+label_click.pack(side=LEFT, padx=0, pady=0)
+
+button_to_click = Text(frame, height = 1, width = 3)
+button_to_click.pack(side=LEFT, padx=(0, 15), pady=0)
+button_to_click.insert("1.0", "e")
+
+#Create Click-Rate Input
+label_rate = Label(frame, text="Clicks/s: ")
+label_rate.pack(side=LEFT, padx=0, pady=0)
+
+click_rate = Text(frame, height = 1, width = 3)
 click_rate.pack(side=LEFT, padx=(0, 15), pady=0)
 click_rate.insert("1.0", "1")
-click_rate.pack()
 
 #Create Duration Time
-label = Label(window, text="Duration in Seconds: ")
-label.pack(side=LEFT, padx=0, pady=0)
-label.pack()
+label_duration = Label(frame, text="Duration in Seconds: ")
+label_duration.pack(side=LEFT, padx=0, pady=0)
 
-duration_time = Text(window, height = 1, width = 3)
+duration_time = Text(frame, height = 1, width = 3)
 duration_time.pack(side=LEFT, padx=(0, 15), pady=0)
 duration_time.insert("1.0", "0")
-duration_time.pack()
 
 #Create Duration Clicks
-label = Label(window, text="Duraction in Clicks: ")
-label.pack(side=LEFT, padx=0, pady=0)
-label.pack()
+label_duration_clicks = Label(frame, text="Duraction in Clicks: ")
+label_duration_clicks.pack(side=LEFT, padx=0, pady=0)
 
-duration_clicks = Text(window, height = 1, width = 3)
+duration_clicks = Text(frame, height = 1, width = 3)
 duration_clicks.pack(side=LEFT, padx=(0, 15), pady=0)
 duration_clicks.insert("1.0", "0")
-duration_clicks.pack()
 
 #Create Toggle/Hold Checkbox
-label = Label(window, text="Toggle/Hold: ")
-label.pack(side=LEFT, padx=0, pady=0)
-label.pack()
+label_toggle = Label(frame, text="Toggle/Hold: ")
+label_toggle.pack(side=LEFT, padx=0, pady=0)
 
 toggle_checkbox = BooleanVar(value=True)
-toggle_box = Checkbutton(window, variable=toggle_checkbox)
+toggle_box = Checkbutton(frame, variable=toggle_checkbox)
 toggle_box.pack(side=LEFT, padx=0, pady=0)
-toggle_box.pack()
 
 #Thread to control clicks
 class ClickButton(threading.Thread):
