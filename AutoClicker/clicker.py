@@ -25,6 +25,7 @@ def center_window(window):
 #Create Window
 window = Tk()
 window.title("Clicker")
+window.wm_attributes("-topmost", 1)
 center_window(window)
 frame = Frame(window, width = 250)
 frame.pack()
@@ -38,16 +39,6 @@ input_trigger = Button(window, text=str(ord(start_stop_key.char)) + " | " + star
 input_trigger.pack(side=LEFT, padx=(0, 15), pady=0)
 input_trigger.config(command=lambda: (window.bind("<KeyPress>" , on_single_key), input_trigger.config(text=" ")))
 input_trigger.pack()
-
-#Create Click-Rate Input
-label = Label(window, text="Clicks/s: ")
-label.pack(side=LEFT, padx=0, pady=0)
-label.pack()
-
-click_rate = Text(window, height = 1, width = 3)
-click_rate.pack(side=LEFT, padx=(0, 15), pady=0)
-click_rate.insert("1.0", "1")
-click_rate.pack()
 
 #Button To Click Input
 label = Label(window, text="Key to Click: ")
@@ -66,6 +57,16 @@ def on_single_key(e):
     window.unbind("<KeyPress>")
     start_stop_key = keyboard.KeyCode(char=chr(e.keycode).lower())
     input_trigger.config(text=str(ord(start_stop_key.char)) + " | " + start_stop_key.char)
+
+#Create Click-Rate Input
+label = Label(window, text="Clicks/s: ")
+label.pack(side=LEFT, padx=0, pady=0)
+label.pack()
+
+click_rate = Text(window, height = 1, width = 3)
+click_rate.pack(side=LEFT, padx=(0, 15), pady=0)
+click_rate.insert("1.0", "1")
+click_rate.pack()
 
 #Create Duration Time
 label = Label(window, text="Duration in Seconds: ")
@@ -103,10 +104,6 @@ class ClickButton(threading.Thread):
         super(ClickButton, self).__init__()
         self.running = False
         self.program_running = True
-    
-    def duration(self):
-        time.sleep(float(duration_time.get("1.0", END).strip()))
-        click_thread.running = False
 
     #Loops every .1 second to check whether to run. Better option?
     def run(self):
@@ -139,9 +136,11 @@ def on_press(key):
             click_thread.button_to_click = (button_to_click.get("1.0", END).strip())
             click_thread.click_rate = float(click_rate.get("1.0", END).strip())
             click_thread.running = True
-            #Duration if greater than 0
-            if float(duration_time.get("1.0", END).strip()) > 0:
-                click_thread.duration()
+            # Duration handling
+            duration_sec = float(duration_time.get("1.0", END).strip())
+            if duration_sec > 0:
+                # Schedule a stop after duration_sec seconds
+                threading.Timer(duration_sec, lambda: setattr(click_thread, 'running', False)).start()
 
 # Create a listener instance
 listener = keyboard.Listener(on_press=on_press)
