@@ -39,48 +39,40 @@ frame = Frame(window, width=250)
 frame.pack()
 
 #Create Trigger Input
-label_trigger = Label(frame, text="Trigger: ")
-label_trigger.grid(row=0, column=0, padx=(5, 0), pady=(5, 0))
+Label(frame, text="Trigger: ").grid(row=0, column=0, padx=(5, 0), pady=(5, 0))
 
-input_trigger = Button(frame, text="Set Trigger Key")
+input_trigger = Button(frame, text="Set Trigger Key", command=lambda: (set_input_trigger()))
 input_trigger.grid(row=0, column=1, padx=(0, 15), pady=(5, 0))
-input_trigger.config(command=lambda: (set_input_trigger()))
 
 #Create Click Input
-label_clicker = Label(frame, text="Clicker: ")
-label_clicker.grid(row=2, column=0, padx=(5, 0), pady=(5, 0))
+Label(frame, text="Clicker: ").grid(row=2, column=0, padx=(5, 0), pady=(5, 0))
 
-input_clicker = Button(frame, text="Set Clicker Key")
+input_clicker = Button(frame, text="Set Clicker Key", command=lambda: (set_input_clicker()))
 input_clicker.grid(row=2, column=1, padx=(0, 15), pady=(5, 0))
-input_clicker.config(command=lambda: (set_input_clicker()))
 
 #Create Click-Rate Input
-label_rate = Label(frame, text="Clicks/s: ")
-label_rate.grid(row=0, column=2, padx=(5, 0), pady=(5, 0))
+Label(frame, text="Clicks/s: ").grid(row=0, column=2, padx=(5, 0), pady=(5, 0))
 
 click_rate = Text(frame, height=1, width=3)
 click_rate.grid(row=0, column=3, padx=(0, 15), pady=(5, 0))
 click_rate.insert("1.0", "100")
 
 #Create Duration Time
-label_duration_time = Label(frame, text="Duration in Seconds: ")
-label_duration_time.grid(row=1, column=2, padx=(5, 0), pady=(5, 0))
+Label(frame, text="Duration in Seconds: ").grid(row=1, column=2, padx=(5, 0), pady=(5, 0))
 
 duration_time = Text(frame, height=1, width=3)
 duration_time.grid(row=1, column=3, padx=(0, 15), pady=(5, 0))
 duration_time.insert("1.0", "0")
 
 #Create Duration Clicks
-label_duration_clicks = Label(frame, text="Duration in Clicks: ")
-label_duration_clicks.grid(row=2, column=2, padx=(5, 0), pady=(5, 0))
+Label(frame, text="Duration in Clicks: ").grid(row=2, column=2, padx=(5, 0), pady=(5, 0))
 
 duration_clicks = Text(frame, height=1, width=3)
 duration_clicks.grid(row=2, column=3, padx=(0, 15), pady=(5, 0))
 duration_clicks.insert("1.0", "0")
 
 #Create Toggle/Hold Checkbox
-label_toggle = Label(frame, text="Toggle/Hold: ")
-label_toggle.grid(row=0, column=4, padx=(5, 0), pady=(5, 0))
+Label(frame, text="Toggle/Hold: ").grid(row=0, column=4, padx=(5, 0), pady=(5, 0))
 
 toggle_checkbox = BooleanVar(value=True)
 toggle_box = Checkbutton(frame, variable=toggle_checkbox)
@@ -112,7 +104,7 @@ def on_press(key):
 
 #Mouse press
 def on_click(x, y, key, pressed):
-    if(pressed == True):
+    if pressed:
         #Start/Stop auto clicker thread
         start_stop_thread(key)
 
@@ -190,9 +182,9 @@ def stop_after_clicks(key):
                 stop_thread()
 
 #Thread to control clicks
-class ClickButton(threading.Thread):
+class ClickThread(threading.Thread):
     def __init__(self):
-        super(ClickButton, self).__init__()
+        super(ClickThread, self).__init__()
         self.running = False
         self.program_running = True
 
@@ -200,27 +192,25 @@ class ClickButton(threading.Thread):
     def run(self):
         while self.program_running:
             while self.running:
-                #print(self.bMouse)
-                if self.bMouse == True:
+                if self.bMouse:
                     mouse_controller.click(self.clicker_key)
                 else:
                     keyboard_controller.press(self.clicker_key)
+                    keyboard_controller.release(self.clicker_key)
                 time.sleep(1/self.click_rate)
             time.sleep(0.1)
 
 #Create Thread
-click_thread = ClickButton()
+click_thread = ClickThread()
 click_thread.start()
 
 #Listener for keyboard presses
-start_stop_listener = keyboard.Listener(on_press=on_press)
-listener_thread = threading.Thread(target=start_stop_listener.start)
-listener_thread.start()
+start_stop_listener_keyboard = keyboard.Listener(on_press=on_press)
+threading.Thread(target=start_stop_listener_keyboard.start).start()
 
 #Listener for Mouse presses
 start_stop_listener_mouse = mouse.Listener(on_click=on_click)
-listener_thread_mouse = threading.Thread(target=start_stop_listener_mouse.start)
-listener_thread_mouse.start()
+threading.Thread(target=start_stop_listener_mouse.start).start()
 
 #Stop separate thread on window close
 def on_close():
@@ -228,5 +218,4 @@ def on_close():
     window.destroy()
 
 window.protocol("WM_DELETE_WINDOW", on_close)
-
 window.mainloop()
