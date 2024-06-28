@@ -6,6 +6,7 @@ from pynput import mouse, keyboard
 #Global Variables
 start_stop_key = None
 clicker_key = None
+bMouse = None
 setting_trigger = False
 setting_clicker = False
 total_clicks = 0
@@ -109,24 +110,61 @@ class ClickButton(threading.Thread):
     def run(self):
         while self.program_running:
             while self.running:
-                #mouse_controller.click(self.button.left)
-                keyboard_controller.press(self.clicker_key)
+                #print(self.bMouse)
+                if self.bMouse == True:
+                    mouse_controller.click(self.clicker_key)
+                else:
+                    keyboard_controller.press(self.clicker_key)
                 time.sleep(1/self.click_rate)
             time.sleep(0.1)
-
-    #Stop when window closed
-    def stop(self):
-        self.program_running = False
 
 #Create Thread
 click_thread = ClickButton()
 click_thread.start()
+
+#Start/Stop Auto Clicker Thread
+def start_stop_thread(key_button):
+    global total_clicks
+    if not setting_trigger and clicker_key and start_stop_key is not None:
+            #Stop after clicks
+            stop_after_clicks(key_button)
+            
+            #Start/Stop Thread
+            if key_button == start_stop_key:
+                if click_thread.running:
+                    stop_thread()
+                else:
+                    start_thread()
+
+#Start Thread Function
+def start_thread():
+    global bMouse
+    #Apply settings before starting
+    click_thread.clicker_key = clicker_key
+    click_thread.click_rate = float(click_rate.get("1.0", END).strip())
+    click_thread.bMouse = bMouse
+    click_thread.running = True
+    #Duration handling
+    seconds = float(duration_time.get("1.0", END).strip())
+    if seconds > 0:
+        #Schedule a stop after seconds
+        threading.Timer(seconds, stop_thread).start()
 
 #Stop Thread Function
 def stop_thread():
     global total_clicks
     total_clicks = 0
     click_thread.running = False
+
+#Duration Clicks
+def stop_after_clicks(key_button):
+    global total_clicks
+    clicks = float(duration_clicks.get("1.0", END).strip())
+    if clicks > 0:
+        if key_button == clicker_key:
+            total_clicks += 1
+            if total_clicks >= clicks:
+                stop_thread()
 
 #Set Trigger
 def set_trigger(button):
@@ -140,61 +178,39 @@ def set_trigger(button):
             pass
 
 #Set Clicker
-def set_clicker(button):
-    global start_stop_key, setting_clicker, clicker_key
+def set_clicker(button, bMouse_Keyboard):
+    global start_stop_key, setting_clicker, clicker_key, bMouse
     if setting_clicker:
         try:
             clicker_key = button
+            bMouse = bMouse_Keyboard
             input_clicker.config(text=str(button))
             setting_clicker = False
         except AttributeError:
             pass
 
-#Checks if pressed key is input trigger key to start/stop
+#Keyboard press
 def on_press(key):
-    global start_stop_key, clicker_key, setting_trigger, setting_clicker, total_clicks
-
     #Start/Stop auto clicker thread
-    if not setting_trigger and clicker_key and start_stop_key is not None:
-        if key == start_stop_key:
-            if click_thread.running:
-                stop_thread()
-            else:
-                #Apply settings before starting
-                click_thread.clicker_key = clicker_key
-                click_thread.click_rate = float(click_rate.get("1.0", END).strip())
-                click_thread.running = True
-                #Duration handling
-                seconds = float(duration_time.get("1.0", END).strip())
-                if seconds > 0:
-                    #Schedule a stop after seconds
-                    threading.Timer(seconds, stop_thread).start()
+    start_stop_thread(key)
 
-        #Duration Clicks
-        clicks = float(duration_clicks.get("1.0", END).strip())
-        
-        #Schedule a stop after clicks
-        if clicks > 0:
-            if key == clicker_key:
-                total_clicks += 1
-                if total_clicks >= clicks:
-                    stop_thread()
-                    
     #Set Trigger
     set_trigger(key)
 
     #Set Clicker
-    set_clicker(key)
+    set_clicker(key, False)
 
-#Checks if pressed key is input trigger key to start/stop
+#Mouse press
 def on_click(x, y, button, pressed):
-    global start_stop_key, clicker_key, setting_trigger, setting_clicker, total_clicks
-    
-    #Set Trigger
-    set_trigger(button)
+    if(pressed == True):
+        #Start/Stop auto clicker thread
+        start_stop_thread(button)
 
-    #Set Clicker
-    set_clicker(button)
+        #Set Trigger
+        set_trigger(button)
+
+        #Set Clicker
+        set_clicker(button, True)
 
 #Listener for keyboard presses
 start_stop_listener = keyboard.Listener(on_press=on_press)
@@ -208,7 +224,7 @@ listener_thread_mouse.start()
 
 #Stop separate thread on window close
 def on_close():
-    click_thread.stop()
+    click_thread.program_running = False
     window.destroy()
 
 window.protocol("WM_DELETE_WINDOW", on_close)
