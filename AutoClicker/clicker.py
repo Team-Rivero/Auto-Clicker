@@ -3,30 +3,39 @@ import time
 import threading
 from pynput import mouse, keyboard
 
-start_stop_key = keyboard.KeyCode(char='')
+start_stop_key = None
+clicker_key = None
+setting_trigger = False
+setting_clicker = False
+
+#Instance of mouse and keyboard controller created
+mouse_controller = mouse.Controller()
+keyboard_controller = keyboard.Controller()
 
 #Center Window on screen
 def center_window(window):
-    # Get screen width and height
+    #Get screen width and height
     screen_width = window.winfo_screenwidth()
     screen_height = window.winfo_screenheight()
 
-    # Calculate position coordinates
+    #Calculate position coordinates
     x = (screen_width // 2) - (window.winfo_reqwidth() // 2)
     y = (screen_height // 2) - (window.winfo_reqheight() // 2)
 
-    # Set the position of the window
+    #Set the position of the window
     window.geometry(f'+{x}+{y}')
 
-#Define Trigger Button DOESN'T WORK FOR MOUSE BUTTONS YET
-def on_single_key(e):
-    
-    global start_stop_key
+#Set trigger key
+def set_trigger_key():
+    global setting_trigger
+    setting_trigger = True
+    input_trigger.config(text="Press Key...")
 
-    window.unbind("<KeyPress>")
-    start_stop_key = keyboard.KeyCode(char=chr(e.keycode).lower())
-    input_trigger.config(text=str(ord(start_stop_key.char)) + " | " + start_stop_key.char)
-    #print(start_stop_key)
+#Set auto clicker key
+def set_input_clicker():
+    global setting_clicker
+    setting_clicker = True
+    input_clicker.config(text="Press Key...")
 
 #region Created Windows
 #Main Window
@@ -38,21 +47,21 @@ center_window(window)
 frame = Frame(window, width=250)
 frame.pack()
 
-#Create Input Trigger Input
+#Create Trigger Input
 label_trigger = Label(frame, text="Trigger: ")
 label_trigger.grid(row=0, column=0, padx=(5, 0), pady=(5, 0))
 
 input_trigger = Button(frame, text="Set Trigger Key")
 input_trigger.grid(row=0, column=1, padx=(0, 15), pady=(5, 0))
-input_trigger.config(command=lambda: (window.bind("<KeyPress>", on_single_key), input_trigger.config(text=" ")))
- 
-#Button To Click Input
-label_click = Label(frame, text="Button to Click: ")
-label_click.grid(row=2, column=0, padx=(5, 0), pady=(5, 0))
+input_trigger.config(command=lambda: (set_trigger_key()))
 
-button_to_click = Text(frame, height=1, width=3)
-button_to_click.grid(row=2, column=1, padx=(0, 15), pady=(5, 0))
-button_to_click.insert("1.0", "e")
+#Create Click Input
+label_clicker = Label(frame, text="Clicker: ")
+label_clicker.grid(row=2, column=0, padx=(5, 0), pady=(5, 0))
+
+input_clicker = Button(frame, text="Set Clicker Key")
+input_clicker.grid(row=2, column=1, padx=(0, 15), pady=(5, 0))
+input_clicker.config(command=lambda: (set_input_clicker()))
 
 #Create Click-Rate Input
 label_rate = Label(frame, text="Clicks/s: ")
@@ -78,7 +87,7 @@ duration_clicks = Text(frame, height=1, width=3)
 duration_clicks.grid(row=2, column=3, padx=(0, 15), pady=(5, 0))
 duration_clicks.insert("1.0", "0")
 
-# Create Toggle/Hold Checkbox
+#Create Toggle/Hold Checkbox
 label_toggle = Label(frame, text="Toggle/Hold: ")
 label_toggle.grid(row=0, column=4, padx=(5, 0), pady=(5, 0))
 
@@ -99,7 +108,7 @@ class ClickButton(threading.Thread):
         while self.program_running:
             while self.running:
                 #mouse_controller.click(self.button.left)
-                keyboard_controller.press(self.button_to_click)
+                keyboard_controller.press(self.clicker_key)
                 time.sleep(1/self.click_rate)
             time.sleep(0.1)
 
@@ -107,65 +116,58 @@ class ClickButton(threading.Thread):
     def stop(self):
         self.program_running = False
 
-# instance of mouse and keyboard controller created
-mouse_controller = mouse.Controller()
-keyboard_controller = keyboard.Controller()
-
 #Checks if pressed key is input trigger key to start/stop
 def on_press(key):
-    if str(start_stop_key) != "''":
-        try:
-            # Check if the pressed key has a char attribute (alphanumeric keys)
-            char = ord(key.char)
-        except AttributeError:
-            #Special keys like 'Key.space', 'Key.enter', 'Key.backspace', etc.
-            char = int(str(key.value).replace("'", "").replace("<", "").replace(">", ""))
+    global start_stop_key, clicker_key, setting_trigger, setting_clicker
 
-            #Modifier Keys
-            if char == 164 or char == 165:
-                #Alt left and right
-                char = 18
-            elif char == 162 or char == 163:
-                #Ctrl left and right
-                char = 17
-            elif char == 160 or char == 161:
-                #Shift left and right
-                char = 16
-            #elif char == '':
-            #    char = 32
-            
-        #print(char)
-        #print(ord(start_stop_key.char))
-
-        if char == ord(start_stop_key.char):
+    #Start/Stop auto clicker thread
+    if not setting_trigger and clicker_key and start_stop_key is not None:
+        if key == start_stop_key:
             if click_thread.running:
                 click_thread.running = False
             else:
                 #apply settings before starting
-                click_thread.button_to_click = (button_to_click.get("1.0", END).strip())
+                click_thread.clicker_key = clicker_key
                 click_thread.click_rate = float(click_rate.get("1.0", END).strip())
                 click_thread.running = True
-                # Duration handling
+                #Duration handling
                 duration_sec = float(duration_time.get("1.0", END).strip())
                 if duration_sec > 0:
-                    # Schedule a stop after duration_sec seconds
+                    #Schedule a stop after duration_sec seconds
                     threading.Timer(duration_sec, lambda: setattr(click_thread, 'running', False)).start()
+
+    #Set Trigger
+    if setting_trigger:
+        try:
+            start_stop_key = key
+            input_trigger.config(text=str(key))
+            setting_trigger = False
+        except AttributeError:
+            pass
+
+    #Set Clicker
+    if setting_clicker:
+        try:
+            clicker_key = key
+            input_clicker.config(text=str(key))
+            setting_clicker = False
+        except AttributeError:
+            pass
+
+#Listener for keyboard presses
+start_stop_listener = keyboard.Listener(on_press=on_press)
+listener_thread = threading.Thread(target=start_stop_listener.start)
+listener_thread.start()
 
 #Create Thread
 click_thread = ClickButton()
 click_thread.start()
 
-# Create a listener instance
-keyboard_listener = keyboard.Listener(on_press=on_press)
-
-# Start the listener in a separate thread
-listener_thread = threading.Thread(target=keyboard_listener.start)
-listener_thread.start()
-
 #Stop separate thread on window close
 def on_close():
     click_thread.stop()
     window.destroy()
+
 window.protocol("WM_DELETE_WINDOW", on_close)
 
 window.mainloop()
