@@ -128,6 +128,28 @@ def stop_thread():
     total_clicks = 0
     click_thread.running = False
 
+#Set Trigger
+def set_trigger(button):
+    global start_stop_key, setting_trigger
+    if setting_trigger:
+        try:
+            start_stop_key = button
+            input_trigger.config(text=str(button))
+            setting_trigger = False
+        except AttributeError:
+            pass
+
+#Set Clicker
+def set_clicker(button):
+    global start_stop_key, setting_clicker, clicker_key
+    if setting_clicker:
+        try:
+            clicker_key = button
+            input_clicker.config(text=str(button))
+            setting_clicker = False
+        except AttributeError:
+            pass
+
 #Checks if pressed key is input trigger key to start/stop
 def on_press(key):
     global start_stop_key, clicker_key, setting_trigger, setting_clicker, total_clicks
@@ -159,27 +181,30 @@ def on_press(key):
                     stop_thread()
                     
     #Set Trigger
-    if setting_trigger:
-        try:
-            start_stop_key = key
-            input_trigger.config(text=str(key))
-            setting_trigger = False
-        except AttributeError:
-            pass
+    set_trigger(key)
 
     #Set Clicker
-    if setting_clicker:
-        try:
-            clicker_key = key
-            input_clicker.config(text=str(key))
-            setting_clicker = False
-        except AttributeError:
-            pass
+    set_clicker(key)
+
+#Checks if pressed key is input trigger key to start/stop
+def on_click(x, y, button, pressed):
+    global start_stop_key, clicker_key, setting_trigger, setting_clicker, total_clicks
+    
+    #Set Trigger
+    set_trigger(button)
+
+    #Set Clicker
+    set_clicker(button)
 
 #Listener for keyboard presses
 start_stop_listener = keyboard.Listener(on_press=on_press)
 listener_thread = threading.Thread(target=start_stop_listener.start)
 listener_thread.start()
+
+#Listener for Mouse presses
+start_stop_listener_mouse = mouse.Listener(on_click=on_click)
+listener_thread_mouse = threading.Thread(target=start_stop_listener_mouse.start)
+listener_thread_mouse.start()
 
 #Stop separate thread on window close
 def on_close():
