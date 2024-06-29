@@ -5,14 +5,14 @@ from pynput import mouse, keyboard
 
 #Global Variables
 start_stop_key = None
-bMouse = None
+bIs_Mouse = None
 setting_trigger = False
 setting_clicker = False
 total_clicks = 0
 
-#Use list for index instead of separate variable
 clicker_buttons = []
 clicker_keys = []
+clicker_labels = []
 clicker_next_row = 2
 current_clicker = None
 
@@ -32,18 +32,43 @@ def validate_number(input):
         return False
 
 #Create new clicker button
-def create_clicker_input():
+def create_clicker_input(add_click_input, remove_click_input):
     row_offset = 2
     clicker_row = len(clicker_buttons) + row_offset
 
     #Create Click Input
-    Label(frame, text="Clicker(s): ").grid(row=clicker_row, column=0, padx=(5, 0), pady=(5, 0))
+    clicker_label = Label(frame, text="Clicker(s): ")
+    clicker_label.grid(row=clicker_row, column=0, padx=(5, 0), pady=(5, 0))
+    clicker_labels.append(clicker_label)
     
     input_clicker = Button(frame, text="Set Clicker Key", command=lambda: (set_input_clicker(clicker_row - 1 - row_offset)))
     input_clicker.grid(row=clicker_row, column=1, padx=(0, 15), pady=(5, 0))
     clicker_buttons.append(input_clicker)
 
     clicker_row += 1
+
+    #Reposition Add/Remove Inputs
+    add_click_input.grid(row=clicker_row, column=1, padx=(0, 45), pady=(5, 5))
+    remove_click_input.grid(row=clicker_row, column=1, padx=(5, 0), pady=(5, 5))
+
+#Delete new clicker button
+def delete_clicker_input(add_click_input, remove_click_input):
+    if clicker_buttons:
+        print(clicker_buttons)
+        row_offset = 2
+        clicker_row = len(clicker_buttons) + row_offset
+
+        #Destroy last one in list
+        clicker_buttons[-1].destroy()
+        clicker_buttons.pop()
+        clicker_labels[-1].destroy()
+        clicker_labels.pop()
+
+        #Reposition Add/Remove Inputs
+        add_click_input.grid(row=clicker_row - 1, column=1, padx=(0, 45), pady=(5, 5))
+        remove_click_input.grid(row=clicker_row - 1, column=1, padx=(5, 0), pady=(5, 5))
+
+        clicker_row -= 1
 
 #Center Window on screen
 def center_window(window):
@@ -58,10 +83,10 @@ def center_window(window):
     #Set the position of the window
     window.geometry(f'+{x}+{y}')
 
-#region Created Windows
+#region Created Widgets
 #Main Window
 window = Tk()
-window.title("Clicker")
+window.title("Auto Clicker")
 window.wm_attributes("-topmost", 1)
 center_window(window)
 
@@ -74,16 +99,16 @@ Label(frame, text="Trigger: ").grid(row=0, column=0, padx=(5, 0), pady=(5, 0))
 input_trigger = Button(frame, text="Set Trigger Key", command=lambda: (set_input_trigger()))
 input_trigger.grid(row=0, column=1, padx=(0, 15), pady=(5, 0))
 
-#First Clicker Input
-create_clicker_input()
-
 #Add Click Input
-add_click_input = Button(frame, text="+", command=lambda: (create_clicker_input()))
+add_click_input = Button(frame, text="+", command=lambda: (create_clicker_input(add_click_input, remove_click_input)))
 add_click_input.grid(row=3, column=1, padx=(0, 45), pady=(5, 5))
 
 #Remove Click Input
-remove_click_input = Button(frame, text="-", command=lambda: ())
+remove_click_input = Button(frame, text="-", command=lambda: (delete_clicker_input(add_click_input, remove_click_input)))
 remove_click_input.grid(row=3, column=1, padx=(5, 0), pady=(5, 5))
+
+#First Clicker Input
+create_clicker_input(add_click_input, remove_click_input)
 
 #Create Click-Rate Input
 Label(frame, text="Clicks/s: ").grid(row=0, column=2, padx=(5, 0), pady=(5, 0))
@@ -143,18 +168,19 @@ def set_input_clicker(clicker_index):
 
 #Set Clicker
 def set_clicker(key, bMouse_Keyboard):
-    global start_stop_key, setting_clicker, clicker_keys, bMouse
+    global start_stop_key, setting_clicker, clicker_keys, bIs_Mouse
     if setting_clicker:
         try:
             clicker_keys = key
-            bMouse = bMouse_Keyboard
-            current_clicker.config(text=str(key))   #Can be used but can't be get/set? Is that how it works with global?
+            bIs_Mouse = bMouse_Keyboard
+            current_clicker.config(text=str(key))
             setting_clicker = False
         except AttributeError:
             pass
 
 #Keyboard press
 def on_press(key):
+    print(key)
     #Start/Stop auto clicker thread
     start_stop_thread(key)
 
@@ -163,6 +189,13 @@ def on_press(key):
 
     #Set Clicker
     set_clicker(key, False)
+
+#Keyboard Release
+def on_release(key):
+    #Start/Stop auto clicker thread
+    if not toggle_checkbox.get():
+        print("Run")
+        stop_thread()
 
 #Mouse press
 def on_click(x, y, key, pressed):
@@ -199,11 +232,11 @@ def start_stop_thread(key):
 
 #Start Thread Function
 def start_thread():
-    global bMouse
+    global bIs_Mouse
     #Apply settings before starting
     click_thread.clicker_keys = clicker_keys
     click_thread.click_rate = float(click_rate.get().strip())
-    click_thread.bMouse = bMouse
+    click_thread.bIs_Mouse = bIs_Mouse
     click_thread.running = True
     #Duration handling
     try:
@@ -246,7 +279,7 @@ class ClickThread(threading.Thread):
     def run(self):
         while self.program_running:
             while self.running and self.click_rate > 0:
-                if self.bMouse:
+                if self.bIs_Mouse:
                     mouse_controller.click(self.clicker_keys)
                 else:
                     keyboard_controller.press(self.clicker_keys)
@@ -259,12 +292,12 @@ click_thread = ClickThread()
 click_thread.start()
 
 #Listener for keyboard presses
-start_stop_listener_keyboard = keyboard.Listener(on_press=on_press)
-threading.Thread(target=start_stop_listener_keyboard.start).start()
+listener_keyboard_press = keyboard.Listener(on_press=on_press, on_release=on_release)
+threading.Thread(target=listener_keyboard_press.start).start()
 
 #Listener for Mouse presses
-start_stop_listener_mouse = mouse.Listener(on_click=on_click)
-threading.Thread(target=start_stop_listener_mouse.start).start()
+listener_mouse = mouse.Listener(on_click=on_click)
+threading.Thread(target=listener_mouse.start).start()
 
 #Stop separate thread on window close
 def on_close():
