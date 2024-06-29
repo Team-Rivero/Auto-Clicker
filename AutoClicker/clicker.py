@@ -5,15 +5,45 @@ from pynput import mouse, keyboard
 
 #Global Variables
 start_stop_key = None
-clicker_key = None
 bMouse = None
 setting_trigger = False
 setting_clicker = False
 total_clicks = 0
 
+#Use list for index instead of separate variable
+clicker_buttons = []
+clicker_keys = []
+clicker_next_row = 2
+current_clicker = None
+
 #Instance of mouse and keyboard controller created
 mouse_controller = mouse.Controller()
 keyboard_controller = keyboard.Controller()
+
+#Validate entry inputs
+def validate_number(input):
+    # Allow '.' backspace or int
+    if input == "." or input == '':
+        return True
+    try:
+        float(input)
+        return True
+    except ValueError:
+        return False
+
+#Create new clicker button
+def create_clicker_input():
+    row_offset = 2
+    clicker_row = len(clicker_buttons) + row_offset
+
+    #Create Click Input
+    Label(frame, text="Clicker(s): ").grid(row=clicker_row, column=0, padx=(5, 0), pady=(5, 0))
+    
+    input_clicker = Button(frame, text="Set Clicker Key", command=lambda: (set_input_clicker(clicker_row - 1 - row_offset)))
+    input_clicker.grid(row=clicker_row, column=1, padx=(0, 15), pady=(5, 0))
+    clicker_buttons.append(input_clicker)
+
+    clicker_row += 1
 
 #Center Window on screen
 def center_window(window):
@@ -44,32 +74,40 @@ Label(frame, text="Trigger: ").grid(row=0, column=0, padx=(5, 0), pady=(5, 0))
 input_trigger = Button(frame, text="Set Trigger Key", command=lambda: (set_input_trigger()))
 input_trigger.grid(row=0, column=1, padx=(0, 15), pady=(5, 0))
 
-#Create Click Input
-Label(frame, text="Clicker: ").grid(row=2, column=0, padx=(5, 0), pady=(5, 0))
+#First Clicker Input
+create_clicker_input()
 
-input_clicker = Button(frame, text="Set Clicker Key", command=lambda: (set_input_clicker()))
-input_clicker.grid(row=2, column=1, padx=(0, 15), pady=(5, 0))
+#Add Click Input
+add_click_input = Button(frame, text="+", command=lambda: (create_clicker_input()))
+add_click_input.grid(row=3, column=1, padx=(0, 45), pady=(5, 5))
+
+#Remove Click Input
+remove_click_input = Button(frame, text="-", command=lambda: ())
+remove_click_input.grid(row=3, column=1, padx=(5, 0), pady=(5, 5))
 
 #Create Click-Rate Input
 Label(frame, text="Clicks/s: ").grid(row=0, column=2, padx=(5, 0), pady=(5, 0))
 
-click_rate = Text(frame, height=1, width=3)
+click_rate = Entry(frame, width=5)
 click_rate.grid(row=0, column=3, padx=(0, 15), pady=(5, 0))
-click_rate.insert("1.0", "100")
+click_rate.insert(0, "100")
+click_rate.config(validate="key", validatecommand=(window.register(validate_number), '%P'))
 
 #Create Duration Time
 Label(frame, text="Duration in Seconds: ").grid(row=1, column=2, padx=(5, 0), pady=(5, 0))
 
-duration_time = Text(frame, height=1, width=3)
+duration_time = Entry(frame, width=5)
 duration_time.grid(row=1, column=3, padx=(0, 15), pady=(5, 0))
-duration_time.insert("1.0", "0")
+duration_time.insert(0, "0")
+duration_time.config(validate="key", validatecommand=(window.register(validate_number), '%P'))
 
 #Create Duration Clicks
 Label(frame, text="Duration in Clicks: ").grid(row=2, column=2, padx=(5, 0), pady=(5, 0))
 
-duration_clicks = Text(frame, height=1, width=3)
+duration_clicks = Entry(frame, width=5)
 duration_clicks.grid(row=2, column=3, padx=(0, 15), pady=(5, 0))
-duration_clicks.insert("1.0", "0")
+duration_clicks.insert(0, "0")
+duration_clicks.config(validate="key", validatecommand=(window.register(validate_number), '%P'))
 
 #Create Toggle/Hold Checkbox
 Label(frame, text="Toggle/Hold: ").grid(row=0, column=4, padx=(5, 0), pady=(5, 0))
@@ -79,17 +117,41 @@ toggle_box = Checkbutton(frame, variable=toggle_checkbox)
 toggle_box.grid(row=0, column=5, padx=(0, 15), pady=(5, 0))
 #endregion
 
-#Set trigger key
+#Waiting for trigger key...
 def set_input_trigger():
     global setting_trigger
     setting_trigger = True
     input_trigger.config(text="Press Key...")
 
-#Set auto clicker key
-def set_input_clicker():
-    global setting_clicker
+#Set Trigger
+def set_trigger(key):
+    global start_stop_key, setting_trigger
+    if setting_trigger:
+        try:
+            start_stop_key = key
+            input_trigger.config(text=str(key))
+            setting_trigger = False
+        except AttributeError:
+            pass
+
+#Waiting for clicker key...
+def set_input_clicker(clicker_index):
+    global setting_clicker, current_clicker
     setting_clicker = True
-    input_clicker.config(text="Press Key...")
+    clicker_buttons[clicker_index].config(text="Press Key...")
+    current_clicker = clicker_buttons[clicker_index]
+
+#Set Clicker
+def set_clicker(key, bMouse_Keyboard):
+    global start_stop_key, setting_clicker, clicker_keys, bMouse
+    if setting_clicker:
+        try:
+            clicker_keys = key
+            bMouse = bMouse_Keyboard
+            current_clicker.config(text=str(key))   #Can be used but can't be get/set? Is that how it works with global?
+            setting_clicker = False
+        except AttributeError:
+            pass
 
 #Keyboard press
 def on_press(key):
@@ -105,6 +167,13 @@ def on_press(key):
 #Mouse press
 def on_click(x, y, key, pressed):
     if pressed:
+        #Removes focus from text fields
+        widget = window.winfo_containing(x, y)
+        if widget in (click_rate, duration_clicks, duration_time):
+            return  # Do nothing if clicked inside the Entry widget
+        else:
+            frame.focus()
+
         #Start/Stop auto clicker thread
         start_stop_thread(key)
 
@@ -117,7 +186,7 @@ def on_click(x, y, key, pressed):
 #Start/Stop Auto Clicker Thread
 def start_stop_thread(key):
     global total_clicks
-    if not setting_trigger and clicker_key and start_stop_key is not None:
+    if not setting_trigger and clicker_keys and start_stop_key is not None:
             #Stop after clicks
             stop_after_clicks(key)
             
@@ -128,42 +197,22 @@ def start_stop_thread(key):
                 else:
                     stop_thread()
 
-#Set Trigger
-def set_trigger(key):
-    global start_stop_key, setting_trigger
-    if setting_trigger:
-        try:
-            start_stop_key = key
-            input_trigger.config(text=str(key))
-            setting_trigger = False
-        except AttributeError:
-            pass
-
-#Set Clicker
-def set_clicker(key, bMouse_Keyboard):
-    global start_stop_key, setting_clicker, clicker_key, bMouse
-    if setting_clicker:
-        try:
-            clicker_key = key
-            bMouse = bMouse_Keyboard
-            input_clicker.config(text=str(key))
-            setting_clicker = False
-        except AttributeError:
-            pass
-
 #Start Thread Function
 def start_thread():
     global bMouse
     #Apply settings before starting
-    click_thread.clicker_key = clicker_key
-    click_thread.click_rate = float(click_rate.get("1.0", END).strip())
+    click_thread.clicker_keys = clicker_keys
+    click_thread.click_rate = float(click_rate.get().strip())
     click_thread.bMouse = bMouse
     click_thread.running = True
     #Duration handling
-    seconds = float(duration_time.get("1.0", END).strip())
-    if seconds > 0:
-        #Schedule a stop after seconds
-        threading.Timer(seconds, stop_thread).start()
+    try:
+        seconds = float(duration_time.get().strip())
+        if seconds > 0:
+            #Schedule a stop after seconds
+            threading.Timer(seconds, stop_thread).start()
+    except:
+        return
 
 #Stop Thread Function
 def stop_thread():
@@ -174,12 +223,17 @@ def stop_thread():
 #Duration Clicks
 def stop_after_clicks(key):
     global total_clicks
-    clicks = float(duration_clicks.get("1.0", END).strip())
-    if clicks > 0:
-        if key == clicker_key:
-            total_clicks += 1
-            if total_clicks >= clicks:
-                stop_thread()
+    
+    #Make sure clicks is valid
+    try:
+        clicks = float(duration_clicks.get().strip())
+        if clicks > 0:
+            if key == clicker_keys:
+                total_clicks += 1
+                if total_clicks >= clicks:
+                    stop_thread()
+    except:
+        return
 
 #Thread to control clicks
 class ClickThread(threading.Thread):
@@ -191,12 +245,12 @@ class ClickThread(threading.Thread):
     #Loops every .1 second to check whether to run. Better option?
     def run(self):
         while self.program_running:
-            while self.running:
+            while self.running and self.click_rate > 0:
                 if self.bMouse:
-                    mouse_controller.click(self.clicker_key)
+                    mouse_controller.click(self.clicker_keys)
                 else:
-                    keyboard_controller.press(self.clicker_key)
-                    keyboard_controller.release(self.clicker_key)
+                    keyboard_controller.press(self.clicker_keys)
+                    keyboard_controller.release(self.clicker_keys)
                 time.sleep(1/self.click_rate)
             time.sleep(0.1)
 
