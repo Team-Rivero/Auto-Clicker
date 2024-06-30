@@ -4,11 +4,12 @@ import threading
 from pynput import mouse, keyboard
 
 #Global Variables
-start_stop_key = None
+trigger_key = None
 bIs_Mouse = None
 setting_trigger = False
 setting_clicker = False
 total_clicks = 0
+bPress_Once = True
 
 clicker_buttons = []
 clicker_keys = []
@@ -150,10 +151,10 @@ def set_input_trigger():
 
 #Set Trigger
 def set_trigger(key):
-    global start_stop_key, setting_trigger
+    global trigger_key, setting_trigger
     if setting_trigger:
         try:
-            start_stop_key = key
+            trigger_key = key
             input_trigger.config(text=str(key))
             setting_trigger = False
         except AttributeError:
@@ -168,7 +169,7 @@ def set_input_clicker(clicker_index):
 
 #Set Clicker
 def set_clicker(key, bMouse_Keyboard):
-    global start_stop_key, setting_clicker, clicker_keys, bIs_Mouse
+    global trigger_key, setting_clicker, clicker_keys, bIs_Mouse
     if setting_clicker:
         try:
             clicker_keys = key
@@ -180,10 +181,14 @@ def set_clicker(key, bMouse_Keyboard):
 
 #Keyboard press
 def on_press(key):
-    print(key)
-    #Start/Stop auto clicker thread
-    start_stop_thread(key)
+    global bPress_Once, trigger_key
 
+    if key == trigger_key:
+        if bPress_Once == True:
+            bPress_Once = False
+            #Start/Stop auto clicker thread
+            start_stop_thread(key)
+  
     #Set Trigger
     set_trigger(key)
 
@@ -192,10 +197,13 @@ def on_press(key):
 
 #Keyboard Release
 def on_release(key):
-    #Start/Stop auto clicker thread
-    if not toggle_checkbox.get():
-        print("Run")
-        stop_thread()
+    global bPress_Once, trigger_key
+
+    if key == trigger_key:
+        bPress_Once = True
+        #Start/Stop auto clicker thread
+        if not toggle_checkbox.get():
+            stop_thread()
 
 #Mouse press
 def on_click(x, y, key, pressed):
@@ -219,16 +227,16 @@ def on_click(x, y, key, pressed):
 #Start/Stop Auto Clicker Thread
 def start_stop_thread(key):
     global total_clicks
-    if not setting_trigger and clicker_keys and start_stop_key is not None:
-            #Stop after clicks
-            stop_after_clicks(key)
-            
-            #Start/Stop Thread
-            if key == start_stop_key:
-                if not click_thread.running:
-                    start_thread()
-                else:
-                    stop_thread()
+    if not setting_trigger and clicker_keys and trigger_key is not None:
+        #Stop after clicks
+        stop_after_clicks(key)
+        
+        #Start/Stop Thread
+        if key == trigger_key:
+            if not click_thread.running:
+                start_thread()
+            else:
+                stop_thread()
 
 #Start Thread Function
 def start_thread():
