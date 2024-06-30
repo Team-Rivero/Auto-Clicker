@@ -207,6 +207,8 @@ def on_release(key):
 
 #Mouse press
 def on_click(x, y, key, pressed):
+    global bPress_Once, trigger_key
+
     if pressed:
         #Removes focus from text fields
         widget = window.winfo_containing(x, y)
@@ -223,6 +225,12 @@ def on_click(x, y, key, pressed):
 
         #Set Clicker
         set_clicker(key, True)
+    if pressed == False:
+        if key == trigger_key:
+            bPress_Once = True
+            #Start/Stop auto clicker thread
+            if not toggle_checkbox.get():
+                stop_thread()
 
 #Start/Stop Auto Clicker Thread
 def start_stop_thread(key):
