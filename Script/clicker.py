@@ -11,6 +11,10 @@ setting_clicker = False
 total_clicks = 0
 bPress_Once = True
 
+# Tooltip variables
+tooltip_window = None
+after_id = None
+
 clicker_buttons = []
 clicker_keys = []
 clicker_labels = []
@@ -32,6 +36,39 @@ def validate_number(input):
     except ValueError:
         return False
 
+#region Tooltips
+def show_tooltip(event, Tooltip_Text):
+    global tooltip_window
+    if tooltip_window or not main_window.winfo_viewable():
+        return
+    x, y = event.x_root + 20, event.y_root - 20
+    tooltip_window = Toplevel(main_window)
+    tooltip_window.wm_overrideredirect(True)
+    tooltip_window.wm_geometry(f"+{x}+{y}")
+    label = Label(tooltip_window, text=Tooltip_Text, relief="solid", borderwidth=1)
+    tooltip_window.attributes('-topmost', True)  # Set tooltip to be topmost
+    label.pack()
+
+def start_tooltip(event, Tooltip_Text):
+    global after_id
+
+    after_id = main_window.after(200, show_tooltip, event, Tooltip_Text)
+
+def stop_tooltip(event):
+    global after_id, tooltip_window
+    
+    if after_id:
+        main_window.after_cancel(after_id)
+        after_id = None
+    if tooltip_window:
+        tooltip_window.destroy()
+        tooltip_window = None
+#endregion
+
+def bind_tooltip(widget, tooltip_text):
+    widget.bind("<Enter>", lambda event: start_tooltip(event, tooltip_text))
+    widget.bind("<Leave>", stop_tooltip)
+
 #Create new clicker button
 def create_clicker_input(add_click_input, remove_click_input):
     row_offset = 2
@@ -45,6 +82,7 @@ def create_clicker_input(add_click_input, remove_click_input):
     input_clicker = Button(frame, text="Set Clicker Key", command=lambda: (set_input_clicker(clicker_row - 1 - row_offset)))
     input_clicker.grid(row=clicker_row, column=1, padx=(0, 15), pady=(5, 0))
     clicker_buttons.append(input_clicker)
+    bind_tooltip(input_clicker, "Clicker Input:\nThe button that is pressed when auto clicking.\nAccepts any key or mouse button.")
 
     clicker_row += 1
 
@@ -72,26 +110,26 @@ def delete_clicker_input(add_click_input, remove_click_input):
         clicker_row -= 1
 
 #Center Window on screen
-def center_window(window):
+def center_window(main_window):
     #Get screen width and height
-    screen_width = window.winfo_screenwidth()
-    screen_height = window.winfo_screenheight()
+    screen_width = main_window.winfo_screenwidth()
+    screen_height = main_window.winfo_screenheight()
 
     #Calculate position coordinates
-    x = (screen_width // 2) - (window.winfo_reqwidth() // 2)
-    y = (screen_height // 2) - (window.winfo_reqheight() // 2)
+    x = (screen_width // 2) - (main_window.winfo_reqwidth() // 2)
+    y = (screen_height // 2) - (main_window.winfo_reqheight() // 2)
 
     #Set the position of the window
-    window.geometry(f'+{x}+{y}')
+    main_window.geometry(f'+{x}+{y}')
 
 #region Created Widgets
 #Main Window
-window = Tk()
-window.title("Auto Clicker")
-window.wm_attributes("-topmost", 1)
-center_window(window)
+main_window = Tk()
+main_window.title("Auto Clicker")
+main_window.wm_attributes("-topmost", 1)
+center_window(main_window)
 
-frame = Frame(window, width=250)
+frame = Frame(main_window, width=250)
 frame.pack()
 
 #Create Trigger Input
@@ -99,6 +137,7 @@ Label(frame, text="Trigger: ").grid(row=0, column=0, padx=(5, 0), pady=(5, 0))
 
 input_trigger = Button(frame, text="Set Trigger Key", command=lambda: (set_input_trigger()))
 input_trigger.grid(row=0, column=1, padx=(0, 15), pady=(5, 0))
+bind_tooltip(input_trigger, "Trigger Input:\nControls starting and stopping the auto clicker.\nAccepts any key or mouse button.")
 
 #Add Click Input
 add_click_input = Button(frame, text="+", command=lambda: (create_clicker_input(add_click_input, remove_click_input)))
@@ -117,7 +156,8 @@ Label(frame, text="Clicks/s: ").grid(row=0, column=2, padx=(5, 0), pady=(5, 0))
 click_rate = Entry(frame, width=5)
 click_rate.grid(row=0, column=3, padx=(0, 15), pady=(5, 0))
 click_rate.insert(0, "100")
-click_rate.config(validate="key", validatecommand=(window.register(validate_number), '%P'))
+click_rate.config(validate="key", validatecommand=(main_window.register(validate_number), '%P'))
+bind_tooltip(click_rate, "Clicks per Second:\nPresses the clicker input at the rate provided.\nAccepts float values.")
 
 #Create Duration Time
 Label(frame, text="Duration in Seconds: ").grid(row=1, column=2, padx=(5, 0), pady=(5, 0))
@@ -125,7 +165,8 @@ Label(frame, text="Duration in Seconds: ").grid(row=1, column=2, padx=(5, 0), pa
 duration_time = Entry(frame, width=5)
 duration_time.grid(row=1, column=3, padx=(0, 15), pady=(5, 0))
 duration_time.insert(0, "0")
-duration_time.config(validate="key", validatecommand=(window.register(validate_number), '%P'))
+duration_time.config(validate="key", validatecommand=(main_window.register(validate_number), '%P'))
+bind_tooltip(duration_time, "Duration in Seconds:\nStops clicker after reaching duration.\nAccepts float values.\nStops if duration in clicks occurs first.\nCan still be stopped with trigger.")
 
 #Create Duration Clicks
 Label(frame, text="Duration in Clicks: ").grid(row=2, column=2, padx=(5, 0), pady=(5, 0))
@@ -133,7 +174,8 @@ Label(frame, text="Duration in Clicks: ").grid(row=2, column=2, padx=(5, 0), pad
 duration_clicks = Entry(frame, width=5)
 duration_clicks.grid(row=2, column=3, padx=(0, 15), pady=(5, 0))
 duration_clicks.insert(0, "0")
-duration_clicks.config(validate="key", validatecommand=(window.register(validate_number), '%P'))
+duration_clicks.config(validate="key", validatecommand=(main_window.register(validate_number), '%P'))
+bind_tooltip(duration_clicks, "Duration in Clicks:\nStops clicker after reaching click count.\nAccepts float values.\nStops if duration in seconds occurs first.\nCan still be stopped with trigger.")
 
 #Create Toggle/Hold Checkbox
 Label(frame, text="Toggle/Hold: ").grid(row=0, column=4, padx=(5, 0), pady=(5, 0))
@@ -141,6 +183,7 @@ Label(frame, text="Toggle/Hold: ").grid(row=0, column=4, padx=(5, 0), pady=(5, 0
 toggle_checkbox = BooleanVar(value=True)
 toggle_box = Checkbutton(frame, variable=toggle_checkbox)
 toggle_box.grid(row=0, column=5, padx=(0, 15), pady=(5, 0))
+bind_tooltip(toggle_box, "Toggle/Hold:\nToggle = Pressing trigger starts clicker until pressed again.\nHold = Pressing trigger runs clicker till released.")
 #endregion
 
 #Waiting for trigger key...
@@ -211,7 +254,7 @@ def on_click(x, y, key, pressed):
 
     if pressed:
         #Removes focus from text fields
-        widget = window.winfo_containing(x, y)
+        widget = main_window.winfo_containing(x, y)
         if widget in (click_rate, duration_clicks, duration_time):
             return  # Do nothing if clicked inside the Entry widget
         else:
@@ -318,7 +361,7 @@ threading.Thread(target=listener_mouse.start).start()
 #Stop separate thread on window close
 def on_close():
     click_thread.program_running = False
-    window.destroy()
+    main_window.destroy()
 
-window.protocol("WM_DELETE_WINDOW", on_close)
-window.mainloop()
+main_window.protocol("WM_DELETE_WINDOW", on_close)
+main_window.mainloop()
