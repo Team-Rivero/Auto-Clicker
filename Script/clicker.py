@@ -4,22 +4,27 @@ import threading
 from pynput import mouse, keyboard
 
 #Global Variables
-trigger_key = None
-bIs_Mouse = None
-setting_trigger = False
-setting_clicker = False
-total_clicks = 0
-bPress_Once = True
+class ClickerSettings:
+    def __init__(self):
+        #Trigger Variables
+        self.trigger_key = None
+        self.setting_trigger = False
+        self.bPress_Once = True
 
-# Tooltip variables
-tooltip_window = None
-after_id = None
+        #Clicker Variables
+        self.clicker_labels = []
+        self.clicker_buttons = []
+        self.clicker_keys = []
+        self.setting_clicker = False
+        self.current_clicker = None
+        self.bIs_Mouse = None
+        self.total_clicks = 0
 
-clicker_buttons = []
-clicker_keys = []
-clicker_labels = []
-clicker_next_row = 2
-current_clicker = None
+        #Tooltip variables
+        self.tooltip_window = None
+        self.after_id = None
+
+settings = ClickerSettings()
 
 #Instance of mouse and keyboard controller created
 mouse_controller = mouse.Controller()
@@ -38,31 +43,26 @@ def validate_number(input):
 
 #region Tooltips
 def show_tooltip(event, Tooltip_Text):
-    global tooltip_window
-    if tooltip_window or not main_window.winfo_viewable():
+    if settings.tooltip_window or not main_window.winfo_viewable():
         return
     x, y = event.x_root + 20, event.y_root - 20
-    tooltip_window = Toplevel(main_window)
-    tooltip_window.wm_overrideredirect(True)
-    tooltip_window.wm_geometry(f"+{x}+{y}")
-    label = Label(tooltip_window, text=Tooltip_Text, relief="solid", borderwidth=1)
-    tooltip_window.attributes('-topmost', True)  # Set tooltip to be topmost
+    settings.tooltip_window = Toplevel(main_window)
+    settings.tooltip_window.wm_overrideredirect(True)
+    settings.tooltip_window.wm_geometry(f"+{x}+{y}")
+    label = Label(settings.tooltip_window, text=Tooltip_Text, relief="solid", borderwidth=1)
+    settings.tooltip_window.attributes('-topmost', True)  # Set tooltip to be topmost
     label.pack()
 
 def start_tooltip(event, Tooltip_Text):
-    global after_id
+    settings.after_id = main_window.after(200, show_tooltip, event, Tooltip_Text)
 
-    after_id = main_window.after(200, show_tooltip, event, Tooltip_Text)
-
-def stop_tooltip(event):
-    global after_id, tooltip_window
-    
-    if after_id:
-        main_window.after_cancel(after_id)
-        after_id = None
-    if tooltip_window:
-        tooltip_window.destroy()
-        tooltip_window = None
+def stop_tooltip(event):    
+    if settings.after_id:
+        main_window.after_cancel(settings.after_id)
+        settings.after_id = None
+    if settings.tooltip_window:
+        settings.tooltip_window.destroy()
+        settings.tooltip_window = None
 #endregion
 
 def bind_tooltip(widget, tooltip_text):
@@ -72,16 +72,16 @@ def bind_tooltip(widget, tooltip_text):
 #Create new clicker button
 def create_clicker_input(add_click_input, remove_click_input):
     row_offset = 2
-    clicker_row = len(clicker_buttons) + row_offset
+    clicker_row = len(settings.clicker_buttons) + row_offset
 
     #Create Click Input
     clicker_label = Label(frame, text="Clicker(s): ")
     clicker_label.grid(row=clicker_row, column=0, padx=(5, 0), pady=(5, 0))
-    clicker_labels.append(clicker_label)
+    settings.clicker_labels.append(clicker_label)
     
     input_clicker = Button(frame, text="Set Clicker Key", command=lambda: (set_input_clicker(clicker_row - 1 - row_offset)))
     input_clicker.grid(row=clicker_row, column=1, padx=(0, 15), pady=(5, 0))
-    clicker_buttons.append(input_clicker)
+    settings.clicker_buttons.append(input_clicker)
     bind_tooltip(input_clicker, "Clicker Input:\nThe button that is pressed when auto clicking.\nAccepts any key or mouse button.")
 
     clicker_row += 1
@@ -92,16 +92,16 @@ def create_clicker_input(add_click_input, remove_click_input):
 
 #Delete new clicker button
 def delete_clicker_input(add_click_input, remove_click_input):
-    if clicker_buttons:
-        print(clicker_buttons)
+    if settings.clicker_buttons:
+        print(settings.clicker_buttons)
         row_offset = 2
-        clicker_row = len(clicker_buttons) + row_offset
+        clicker_row = len(settings.clicker_buttons) + row_offset
 
         #Destroy last one in list
-        clicker_buttons[-1].destroy()
-        clicker_buttons.pop()
-        clicker_labels[-1].destroy()
-        clicker_labels.pop()
+        settings.clicker_buttons[-1].destroy()
+        settings.clicker_buttons.pop()
+        settings.clicker_labels[-1].destroy()
+        settings.clicker_labels.pop()
 
         #Reposition Add/Remove Inputs
         add_click_input.grid(row=clicker_row - 1, column=1, padx=(0, 45), pady=(5, 5))
@@ -188,47 +188,42 @@ bind_tooltip(toggle_box, "Toggle/Hold:\nToggle = Pressing trigger starts clicker
 
 #Waiting for trigger key...
 def set_input_trigger():
-    global setting_trigger
-    setting_trigger = True
+    settings.setting_trigger = True
     input_trigger.config(text="Press Key...")
 
 #Set Trigger
 def set_trigger(key):
-    global trigger_key, setting_trigger
-    if setting_trigger:
+    if settings.setting_trigger:
         try:
-            trigger_key = key
+            settings.trigger_key = key
             input_trigger.config(text=str(key))
-            setting_trigger = False
+            settings.setting_trigger = False
         except AttributeError:
             pass
 
 #Waiting for clicker key...
 def set_input_clicker(clicker_index):
-    global setting_clicker, current_clicker
-    setting_clicker = True
-    clicker_buttons[clicker_index].config(text="Press Key...")
-    current_clicker = clicker_buttons[clicker_index]
+    settings.setting_clicker = True
+    settings.clicker_buttons[clicker_index].config(text="Press Key...")
+    settings.current_clicker = settings.clicker_buttons[clicker_index]
 
 #Set Clicker
 def set_clicker(key, bMouse_Keyboard):
-    global trigger_key, setting_clicker, clicker_keys, bIs_Mouse
-    if setting_clicker:
+    if settings.setting_clicker:
         try:
-            clicker_keys = key
-            bIs_Mouse = bMouse_Keyboard
-            current_clicker.config(text=str(key))
-            setting_clicker = False
+            settings.clicker_keys = key
+            settings.bIs_Mouse = bMouse_Keyboard
+            settings.current_clicker.config(text=str(key))
+            settings.setting_clicker = False
         except AttributeError:
             pass
 
 #Keyboard press
 def on_press(key):
-    global bPress_Once, trigger_key
 
-    if key == trigger_key:
-        if bPress_Once == True:
-            bPress_Once = False
+    if key == settings.trigger_key:
+        if settings.bPress_Once == True:
+            settings.bPress_Once = False
             #Start/Stop auto clicker thread
             start_stop_thread(key)
   
@@ -240,18 +235,14 @@ def on_press(key):
 
 #Keyboard Release
 def on_release(key):
-    global bPress_Once, trigger_key
-
-    if key == trigger_key:
-        bPress_Once = True
+    if key == settings.trigger_key:
+        settings.bPress_Once = True
         #Start/Stop auto clicker thread
         if not toggle_checkbox.get():
             stop_thread()
 
 #Mouse press
 def on_click(x, y, key, pressed):
-    global bPress_Once, trigger_key
-
     if pressed:
         #Removes focus from text fields
         widget = main_window.winfo_containing(x, y)
@@ -269,21 +260,20 @@ def on_click(x, y, key, pressed):
         #Set Clicker
         set_clicker(key, True)
     if pressed == False:
-        if key == trigger_key:
-            bPress_Once = True
+        if key == settings.trigger_key:
+            settings.bPress_Once = True
             #Start/Stop auto clicker thread
             if not toggle_checkbox.get():
                 stop_thread()
 
 #Start/Stop Auto Clicker Thread
 def start_stop_thread(key):
-    global total_clicks
-    if not setting_trigger and clicker_keys and trigger_key is not None:
+    if not settings.setting_trigger and settings.clicker_keys and settings.trigger_key is not None:
         #Stop after clicks
         stop_after_clicks(key)
         
         #Start/Stop Thread
-        if key == trigger_key:
+        if key == settings.trigger_key:
             if not click_thread.running:
                 start_thread()
             else:
@@ -291,11 +281,10 @@ def start_stop_thread(key):
 
 #Start Thread Function
 def start_thread():
-    global bIs_Mouse
     #Apply settings before starting
-    click_thread.clicker_keys = clicker_keys
+    click_thread.clicker_keys = settings.clicker_keys
     click_thread.click_rate = float(click_rate.get().strip())
-    click_thread.bIs_Mouse = bIs_Mouse
+    click_thread.bIs_Mouse = settings.bIs_Mouse
     click_thread.running = True
     #Duration handling
     try:
@@ -308,29 +297,29 @@ def start_thread():
 
 #Stop Thread Function
 def stop_thread():
-    global total_clicks
-    total_clicks = 0
+    settings.total_clicks = 0
     click_thread.running = False
 
 #Duration Clicks
-def stop_after_clicks(key):
-    global total_clicks
-    
+def stop_after_clicks(key):    
     #Make sure clicks is valid
     try:
         clicks = float(duration_clicks.get().strip())
         if clicks > 0:
-            if key == clicker_keys:
-                total_clicks += 1
-                if total_clicks >= clicks:
+            if key == settings.clicker_keys:
+                settings.total_clicks += 1
+                if settings.total_clicks >= clicks:
                     stop_thread()
     except:
         return
 
 #Thread to control clicks
-class ClickThread(threading.Thread):
+class ClickButton(threading.Thread):
     def __init__(self):
-        super(ClickThread, self).__init__()
+        super(ClickButton, self).__init__()
+        self.settings = settings
+        self.mouse_controller = mouse_controller
+        self.keyboard_controller = keyboard_controller
         self.running = False
         self.program_running = True
 
@@ -347,7 +336,7 @@ class ClickThread(threading.Thread):
             time.sleep(0.1)
 
 #Create Thread
-click_thread = ClickThread()
+click_thread = ClickButton()
 click_thread.start()
 
 #Listener for keyboard presses
