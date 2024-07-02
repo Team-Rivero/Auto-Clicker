@@ -2,6 +2,8 @@ from tkinter import *
 import time
 import threading
 from pynput import mouse, keyboard
+import traceback
+import sys
 
 #Global Variables
 class ClickerSettings:
@@ -59,6 +61,9 @@ class ClickerApp:
         #Main Window
         self.main_window.title("Auto Clicker")
         self.main_window.wm_attributes("-topmost", 1)
+        
+        #Icon
+        self.main_window.iconbitmap('Images/icon.ico')
 
         self.frame = Frame(self.main_window, width=250)
         self.frame.pack()
@@ -372,7 +377,14 @@ class ClickButton(threading.Thread):
 
 #Main Window
 if __name__ == "__main__":
-    main_window = Tk()
-    app = ClickerApp(main_window)
-    main_window.protocol("WM_DELETE_WINDOW", app.on_close)
-    main_window.mainloop()
+    try:
+        main_window = Tk()
+        app = ClickerApp(main_window)
+        main_window.protocol("WM_DELETE_WINDOW", app.on_close)
+        main_window.mainloop()
+    except Exception as e:
+        error_message = traceback.format_exc()
+        # Display a message box with the error information
+        import tkinter.messagebox as messagebox
+        messagebox.showerror("Application Error", f"An unexpected error occurred:\n{error_message}")
+        sys.exit(1)
