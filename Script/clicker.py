@@ -1,9 +1,7 @@
-from tkinter import *
-import time
-import threading
+from tkinter import Frame, Label, Button, BooleanVar, Checkbutton, Entry, Toplevel, Tk
+from time import sleep
+from threading import Timer, Thread
 from pynput import mouse, keyboard
-import traceback
-import sys
 
 #Global Variables
 class ClickerSettings:
@@ -63,7 +61,10 @@ class ClickerApp:
         self.main_window.wm_attributes("-topmost", 1)
         
         #Icon
-        self.main_window.iconbitmap('Images/icon.ico')
+        try:
+            self.main_window.iconbitmap('Images/icon.ico')
+        except:
+            pass
 
         self.frame = Frame(self.main_window, width=250)
         self.frame.pack()
@@ -317,7 +318,7 @@ class ClickerApp:
             seconds = float(self.duration_time.get().strip())
             if seconds > 0:
                 #Schedule a stop after seconds
-                threading.Timer(seconds, self.stop_thread).start()
+                Timer(seconds, self.stop_thread).start()
         except:
             return
 
@@ -343,11 +344,11 @@ class ClickerApp:
     def setup_listeners(self):
         #Listener for keyboard presses
         listener_keyboard_press = keyboard.Listener(on_press=self.on_press, on_release=self.on_release)
-        threading.Thread(target=listener_keyboard_press.start).start()
+        Thread(target=listener_keyboard_press.start).start()
 
         #Listener for Mouse presses
         listener_mouse = mouse.Listener(on_click=self.on_click)
-        threading.Thread(target=listener_mouse.start).start()
+        Thread(target=listener_mouse.start).start()
 
     #Stop separate thread on window close
     def on_close(self):
@@ -355,7 +356,7 @@ class ClickerApp:
         self.main_window.destroy()
 
 #Thread to control clicks
-class ClickButton(threading.Thread):
+class ClickButton(Thread):
     def __init__(self, settings, mouse_controller, keyboard_controller):
         super(ClickButton, self).__init__()
         self.settings = settings
@@ -372,19 +373,12 @@ class ClickButton(threading.Thread):
                     self.mouse_controller.click(self.clicker_keys)
                 else:
                     self.keyboard_controller.press(self.clicker_keys)
-                time.sleep(1 / self.click_rate)
-            time.sleep(0.1)
+                sleep(1 / self.click_rate)
+            sleep(0.1)
 
 #Main Window
 if __name__ == "__main__":
-    try:
-        main_window = Tk()
-        app = ClickerApp(main_window)
-        main_window.protocol("WM_DELETE_WINDOW", app.on_close)
-        main_window.mainloop()
-    except Exception as e:
-        error_message = traceback.format_exc()
-        # Display a message box with the error information
-        import tkinter.messagebox as messagebox
-        messagebox.showerror("Application Error", f"An unexpected error occurred:\n{error_message}")
-        sys.exit(1)
+    main_window = Tk()
+    app = ClickerApp(main_window)
+    main_window.protocol("WM_DELETE_WINDOW", app.on_close)
+    main_window.mainloop()
