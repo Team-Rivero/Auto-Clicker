@@ -26,10 +26,10 @@ class ClickerSettings:
 
 class ClickerApp:
     def __init__(self, main_window):
-        self.main_window = main_window
         self.settings = ClickerSettings()
+        self.main_window = main_window
 
-        #Instance of mouse and keyboard controller created
+        #Controllers
         self.mouse_controller = mouse.Controller()
         self.keyboard_controller = keyboard.Controller()
 
@@ -72,64 +72,78 @@ class ClickerApp:
 
         #Add Click Input
         self.add_click_input = Button(self.frame, text="+", command=lambda: (self.create_clicker_input(self.add_click_input, self.remove_click_input)))
+        self.add_click_input.configure(state="disabled")
         self.add_click_input.grid(row=3, column=1, padx=(0, 45), pady=(5, 5))
+        self.bind_tooltip(self.add_click_input, "Add Clicker:\nNot Operational")
 
         #Remove Click Input
         self.remove_click_input = Button(self.frame, text="-", command=lambda: (self.delete_clicker_input(self.add_click_input, self.remove_click_input)))
+        self.remove_click_input.configure(state="disabled")
         self.remove_click_input.grid(row=3, column=1, padx=(5, 0), pady=(5, 5))
+        self.bind_tooltip(self.remove_click_input, "Remove Clicker:\nNot Operational")
 
         #First Clicker Input
         self.create_clicker_input(self.add_click_input, self.remove_click_input)
 
-        #Create Click-Rate Input
-        Label(self.frame, text="Clicks/s: ").grid(row=0, column=2, padx=(5, 0), pady=(5, 0))
+        #Trigger Toggle/Hold Checkbox
+        Label(self.frame, text="Toggle/Hold: ").grid(row=0, column=2, padx=(5, 0), pady=(5, 0))
+
+        self.trigger_toggle_checkbox = BooleanVar(value=True)
+        self.trigger_toggle_box = Checkbutton(self.frame, variable=self.trigger_toggle_checkbox)
+        self.trigger_toggle_box.grid(row=0, column=3, padx=(0, 15), pady=(5, 0))
+        self.bind_tooltip(self.trigger_toggle_box, "Toggle/Hold:\nToggle = Pressing trigger starts clicker until pressed again.\nHold = Pressing trigger runs clicker till released.")
+
+        #Click-Rate Input
+        Label(self.frame, text="Clicks/s: ").grid(row=0, column=4, padx=(5, 0), pady=(5, 0))
 
         self.click_rate = Entry(self.frame, width=5)
-        self.click_rate.grid(row=0, column=3, padx=(0, 15), pady=(5, 0))
+        self.click_rate.grid(row=0, column=5, padx=(0, 15), pady=(5, 0))
         self.click_rate.insert(0, "100")
         self.click_rate.config(validate="key", validatecommand=(self.main_window.register(self.validate_number), '%P'))
         self.bind_tooltip(self.click_rate, "Clicks per Second:\nPresses the clicker input at the rate provided.\nAccepts float values.")
 
-        #Create Duration Time
-        Label(self.frame, text="Duration in Seconds: ").grid(row=1, column=2, padx=(5, 0), pady=(5, 0))
+        #Duration Time
+        Label(self.frame, text="Duration in Seconds: ").grid(row=1, column=4, padx=(5, 0), pady=(5, 0))
 
         self.duration_time = Entry(self.frame, width=5)
-        self.duration_time.grid(row=1, column=3, padx=(0, 15), pady=(5, 0))
+        self.duration_time.grid(row=1, column=5, padx=(0, 15), pady=(5, 0))
         self.duration_time.insert(0, "0")
         self.duration_time.config(validate="key", validatecommand=(self.main_window.register(self.validate_number), '%P'))
         self.bind_tooltip(self.duration_time, "Duration in Seconds:\nStops clicker after reaching duration.\nAccepts float values.\nStops if duration in clicks occurs first.\nCan still be stopped with trigger.")
 
-        #Create Duration Clicks
-        Label(self.frame, text="Duration in Clicks: ").grid(row=2, column=2, padx=(5, 0), pady=(5, 0))
+        #Duration Clicks
+        Label(self.frame, text="Duration in Clicks: ").grid(row=2, column=4, padx=(5, 0), pady=(5, 0))
 
         self.duration_clicks = Entry(self.frame, width=5)
-        self.duration_clicks.grid(row=2, column=3, padx=(0, 15), pady=(5, 0))
+        self.duration_clicks.grid(row=2, column=5, padx=(0, 15), pady=(5, 0))
         self.duration_clicks.insert(0, "0")
         self.duration_clicks.config(validate="key", validatecommand=(self.main_window.register(self.validate_number), '%P'))
         self.bind_tooltip(self.duration_clicks, "Duration in Clicks:\nStops clicker after reaching click count.\nAccepts float values.\nStops if duration in seconds occurs first.\nCan still be stopped with trigger.")
-
-        #Create Toggle/Hold Checkbox
-        Label(self.frame, text="Toggle/Hold: ").grid(row=0, column=4, padx=(5, 0), pady=(5, 0))
-
-        self.toggle_checkbox = BooleanVar(value=True)
-        self.toggle_box = Checkbutton(self.frame, variable=self.toggle_checkbox)
-        self.toggle_box.grid(row=0, column=5, padx=(0, 15), pady=(5, 0))
-        self.bind_tooltip(self.toggle_box, "Toggle/Hold:\nToggle = Pressing trigger starts clicker until pressed again.\nHold = Pressing trigger runs clicker till released.")
 
     #Create new clicker widget
     def create_clicker_input(self, add_click_input, remove_click_input):
         row_offset = 2
         clicker_row = len(self.settings.clicker_buttons) + row_offset
 
-        #Create Click Input
+        #Click Label
         self.clicker_label = Label(self.frame, text="Clicker(s): ")
         self.clicker_label.grid(row=clicker_row, column=0, padx=(5, 0), pady=(5, 0))
         self.settings.clicker_labels.append(self.clicker_label)
 
+        #Click Input
         self.input_clicker = Button(self.frame, text="Set Clicker Key", command=lambda: (self.set_input_clicker(clicker_row - 1 - row_offset)))
         self.input_clicker.grid(row=clicker_row, column=1, padx=(0, 15), pady=(5, 0))
         self.settings.clicker_buttons.append(self.input_clicker)
         self.bind_tooltip(self.input_clicker, "Clicker Input:\nThe button that is pressed when auto clicking.\nAccepts any key or mouse button.")
+
+        #Clicker Spam/Hold Checkbox
+        Label(self.frame, text="Spam/Hold: ").grid(row=clicker_row, column=2, padx=(5, 0), pady=(5, 0))
+
+        self.clicker_toggle_checkbox = BooleanVar(value=True)
+        self.clicker_toggle_box = Checkbutton(self.frame, variable=self.clicker_toggle_checkbox)
+        self.clicker_toggle_box.grid(row=clicker_row, column=3, padx=(0, 15), pady=(5, 0))
+        self.clicker_toggle_box.configure(state="disabled")
+        self.bind_tooltip(self.clicker_toggle_box, "Spam/Hold:\nNot Operational")
 
         clicker_row += 1
 
@@ -245,7 +259,7 @@ class ClickerApp:
         if key == self.settings.trigger_key:
             self.settings.bPress_Once = True
             #Start/Stop auto clicker thread
-            if not self.toggle_checkbox.get():
+            if not self.trigger_toggle_checkbox.get():
                 self.stop_thread()
 
     #Mouse press
@@ -270,7 +284,7 @@ class ClickerApp:
             if key == self.settings.trigger_key:
                 self.settings.bPress_Once = True
                 #Start/Stop auto clicker thread
-                if not self.toggle_checkbox.get():
+                if not self.trigger_toggle_checkbox.get():
                     self.stop_thread()
 
     #Start/Stop Auto Clicker Thread
@@ -353,9 +367,10 @@ class ClickButton(threading.Thread):
                     self.mouse_controller.click(self.clicker_keys)
                 else:
                     self.keyboard_controller.press(self.clicker_keys)
-                time.sleep(1/self.click_rate)
+                time.sleep(1 / self.click_rate)
             time.sleep(0.1)
 
+#Main Window
 if __name__ == "__main__":
     main_window = Tk()
     app = ClickerApp(main_window)
