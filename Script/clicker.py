@@ -228,7 +228,6 @@ class ClickerApp:
 
     #Keyboard press
     def on_press(self, key):
-
         if key == self.settings.trigger_key:
             if self.settings.bPress_Once == True:
                 self.settings.bPress_Once = False
@@ -354,7 +353,6 @@ class ClickButton(threading.Thread):
                     self.mouse_controller.click(self.clicker_keys)
                 else:
                     self.keyboard_controller.press(self.clicker_keys)
-                    self.keyboard_controller.release(self.clicker_keys)
                 time.sleep(1/self.click_rate)
             time.sleep(0.1)
 
